@@ -31,113 +31,89 @@ function cambiarCantidadComida(button, delta) {
     actualizarTotal();
 }
 
-// Función para actualizar el total de la compra
-function actualizarTotal() {
-    const precios = document.querySelectorAll('.precio');
-    const cantidades = document.querySelectorAll('.cantidad .valor');
+let total = 0;
+
+const calcularSubtotal = (selector, precioSelector = '[data-precio]', valorSelector = '.valor') => {
+    const items = document.querySelectorAll(selector);
+    items.forEach(item => {
+        const precioElem = item.querySelector(precioSelector);
+        const valorElem = item.querySelector(valorSelector);
+
+        if (precioElem && valorElem) {
+            const precio = parseFloat(precioElem.dataset.precio);
+            const cantidad = parseInt(valorElem.textContent) || 0;
+
+            // Solo agregar si la cantidad es mayor a 0
+            if (cantidad > 0) {
+                total += precio * cantidad;
+            }
+        }
+    });
+};
+
+// Método para calcular el total de los artículos seleccionados
+function calcularTotal() {
     let total = 0;
 
-    precios.forEach((precioElem, index) => {
-        const precio = parseFloat(precioElem.textContent.replace('$', '').replace('.', ''));
-        const cantidad = parseInt(cantidades[index].textContent);
+    // Calcular total de entradas y extras seleccionados
+    document.querySelectorAll('.entrada-item').forEach(item => {
+        const precio = parseInt(item.querySelector('.precio').textContent.replace(/\D/g, ''));
+        const cantidad = parseInt(item.querySelector('.valor').textContent);
         total += precio * cantidad;
     });
 
-    // Guardar el total en el LocalStorage
-    localStorage.setItem('totalCompra', total);
+    // Calcular total de promociones seleccionadas
+    document.querySelectorAll('#promociones .card-text').forEach(promo => {
+        const precio = parseInt(promo.dataset.precio);
+        const cantidad = parseInt(promo.closest('.card-body').querySelector('.valor').textContent);
+        total += precio * cantidad;
+    });
+
+    return total;
 }
 
-// Función para mostrar el resumen en el modal
+// Método para mostrar el resumen en el modal
 function mostrarResumen() {
-    // Actualizar el total
-    actualizarTotal();
-
-    // Recuperar la fecha de visita
     const fechaVisita = document.getElementById('fechaVisita').value;
-    if (fechaVisita) {
-        localStorage.setItem('fechaVisita', fechaVisita);  // Guardar la fecha en LocalStorage
-        document.getElementById('resumenFecha').textContent = `Fecha reservada: ${fechaVisita}`;
+    const totalCompra = calcularTotal();
+
+    // Verificar que haya una fecha seleccionada
+    if (!fechaVisita) {
+        alert('Por favor, selecciona una fecha de visita.');
+        return;
     }
 
-    // Recuperar el total de la compra
-    const totalCompra = localStorage.getItem('totalCompra') || 0;
-    document.getElementById('modalTotalCompra').textContent = `$${parseInt(totalCompra).toLocaleString('es-CL')}`;
+    // Actualizar el contenido del modal con los valores correspondientes
+    document.getElementById('resumenFecha').textContent = `Fecha de Visita: ${fechaVisita}`;
+    document.getElementById('modalTotalCompra').textContent = `$${totalCompra.toLocaleString()}`;
 
-    // Mostrar el modal de resumen
+    // Abrir el modal de resumen utilizando Bootstrap
     const modal = new bootstrap.Modal(document.getElementById('resumenModal'));
     modal.show();
 }
 
+
+
 // Función para finalizar la compra
 function finalizarCompra() {
-    localStorage.removeItem('totalCompra');  // Eliminar el total del LocalStorage
-    localStorage.removeItem('fechaVisita');  // Eliminar la fecha del LocalStorage
+    localStorage.removeItem('totalCompra');
+    localStorage.removeItem('fechaVisita');
     alert('Compra finalizada. ¡Gracias por tu compra!');
-    window.location.href = 'index.html';  // Redirigir a la página principal
+    window.location.href = 'index.html';
 }
 
 function generarResumenPDF() {
-    const { jsPDF } = window.jspdf;
-    const doc = new jsPDF();
-
-    try {
-        // Obtener la fecha y total del resumen
-        const fecha = document.getElementById("fechaVisita").value || "No seleccionada";
-        const totalCompra = document.getElementById("modalTotalCompra").textContent;
-
-        // Verificar la fecha
-        if (!fecha) {
-            alert("Por favor, selecciona una fecha.");
-            return;
-        }
-
-        let yPosition = 10;
-
-        // Título del PDF
-        doc.setFontSize(18);
-        doc.text("Resumen de la Compra", 10, yPosition);
-        yPosition += 10;
-
-        // Fecha de visita
-        doc.setFontSize(12);
-        doc.text(`Fecha de Visita: ${fecha}`, 10, yPosition);
-        yPosition += 10;
-
-        // Detalle de entradas seleccionadas
-        const entradas = Array.from(document.querySelectorAll("#listaEntradas .entrada-item"));
-        doc.setFontSize(14);
-        doc.text("Entradas:", 10, yPosition);
-        yPosition += 10;
-
-        entradas.forEach(item => {
-            const nombre = item.querySelector("span").textContent;
-            const cantidad = item.querySelector(".valor").textContent;
-            const precio = item.querySelector(".precio").textContent;
-            doc.text(`${nombre}: ${cantidad} x ${precio}`, 10, yPosition);
-            yPosition += 8;
-        });
-
-        // Total de la compra
-        doc.setFontSize(16);
-        doc.text(`Total: ${totalCompra}`, 10, yPosition + 10);
-
-        // Generar el QR ficticio
-        const qr = new QRious({
-            value: `Fecha: ${fecha}, Total: ${totalCompra}`, // Contenido del QR
-            size: 100 // Tamaño del QR
-        });
-
-        // Dibujar el QR en el PDF
-        const qrDataURL = qr.toDataURL(); // Convertimos el QR a Data URL
-        doc.addImage(qrDataURL, 'PNG', 150, 20, 50, 50); // Agregamos el QR al PDF
-
-        // Descargar el PDF
-        doc.save("resumen_compra_con_qr.pdf");
-
-    } catch (error) {
-        console.error("Error al generar el PDF:", error);
-        alert("Ocurrió un error al generar el PDF.");
-    }
+    const link = document.createElement('a');
+    link.href = 'recursos/Comprobante de compra.pdf'; 
+    link.download = 'comprobante.pdf';
+    link.click();
 }
+
+
+
+
+
+
+
 
 
